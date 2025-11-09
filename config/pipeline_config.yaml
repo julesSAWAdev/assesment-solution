@@ -1,0 +1,34 @@
+# Pipeline Configuration
+# This file contains configuration settings for the data pipeline
+
+data_source:
+  api_name: "CoinGecko"
+  base_url: "https://api.coingecko.com/api/v3"
+  rate_limit_per_minute: 50
+  timeout_seconds: 30
+
+ingestion:
+  records_per_page: 100
+  storage_formats:
+    - json
+    - parquet
+  compression: snappy
+
+transformation:
+  bulk_insert_chunk_size: 1000
+  null_handling:
+    total_supply: 0
+    max_supply: 0
+    market_cap_rank: 999
+
+modeling:
+  top_n_cryptocurrencies: 50
+  market_cap_categories:
+    large_cap: [1, 10]
+    mid_cap: [11, 50]
+    small_cap: [51, 100]
+
+database:
+  connection_pool_size: 5
+  max_overflow: 10
+  pool_timeout: 30

@@ -1,0 +1,87 @@
+version: '3.8'
+
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:15-alpine
+    container_name: crypto_postgres
+    environment:
+      POSTGRES_USER: pipeline_user
+      POSTGRES_PASSWORD: pipeline_pass
+      POSTGRES_DB: crypto_data
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./sql:/docker-entrypoint-initdb.d
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U pipeline_user -d crypto_data"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - pipeline_network
+
+  # Dagster Webserver & Daemon
+  dagster:
+    build:
+      context: .
+      dockerfile: Dockerfile.dagster
+    container_name: crypto_dagster
+    environment:
+      - DAGSTER_POSTGRES_USER=pipeline_user
+      - DAGSTER_POSTGRES_PASSWORD=pipeline_pass
+      - DAGSTER_POSTGRES_DB=crypto_data
+      - DAGSTER_POSTGRES_HOST=postgres
+      - DAGSTER_POSTGRES_PORT=5432
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_NAME=crypto_data
+      - DB_USER=pipeline_user
+      - DB_PASSWORD=pipeline_pass
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./dagster_home:/opt/dagster/dagster_home
+      - ./scripts:/opt/dagster/app/scripts
+      - ./data:/opt/dagster/app/data
+      - ./config:/opt/dagster/app/config
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - pipeline_network
+
+  # Pipeline Runner (for standalone execution without Airflow)
+  pipeline_runner:
+    image: python:3.11-slim
+    container_name: crypto_pipeline_runner
+    working_dir: /app
+    volumes:
+      - ./scripts:/app/scripts
+      - ./data:/app/data
+      - ./config:/app/config
+    environment:
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_NAME=crypto_data
+      - DB_USER=pipeline_user
+      - DB_PASSWORD=pipeline_pass
+    depends_on:
+      postgres:
+        condition: service_healthy
+    command: >
+      bash -c "
+      pip install --no-cache-dir requests pandas sqlalchemy psycopg2-binary python-dotenv pyarrow &&
+      echo 'Pipeline runner ready. Run: docker exec -it crypto_pipeline_runner python scripts/run_pipeline.py' &&
+      tail -f /dev/null
+      "
+    networks:
+      - pipeline_network
+
+volumes:
+  postgres_data:
+
+networks:
+  pipeline_network:
+    driver: bridge
