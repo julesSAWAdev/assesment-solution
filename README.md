@@ -20,7 +20,7 @@ A production-ready data engineering pipeline demonstrating ingestion, transforma
 
 ### Start Pipeline
 ```bash
-cd crypto-pipeline
+cd assesment-solution
 docker-compose up -d --build
 
 # Wait 30 seconds, then run:
