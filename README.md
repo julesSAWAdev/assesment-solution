@@ -20,6 +20,7 @@ A production-ready data engineering pipeline demonstrating ingestion, transforma
 
 ### Start Pipeline
 ```bash
+git clone https://github.com/julesSAWAdev/assesment-solution.git  
 cd assesment-solution
 docker-compose up -d --build
 
